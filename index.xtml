@@ -1,0 +1,106 @@
+DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIVORA AI</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #090d18;
+  color: white;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  padding: 25px 16px;
+}
+header {
+  text-align: center;
+  padding: 35px 0;
+}
+.logo {
+  font-size: 36px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  color: #62a8ff;
+}
+header p { color: #9baac2; }
+main {
+  max-width: 520px;
+  margin: auto;
+  background: #141c2d;
+  border: 1px solid #293750;
+  border-radius: 18px;
+  padding: 20px;
+}
+h2 { color: #80baff; }
+#chat {
+  min-height: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+  color: #dce6f7;
+  line-height: 1.6;
+}
+input {
+  width: 100%;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #40516c;
+  background: #0b1220;
+  color: white;
+  font-size: 16px;
+}
+button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  background: #287de5;
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+}
+footer {
+  text-align: center;
+  color: #71829d;
+  margin-top: 25px;
+  font-size: 12px;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">AIVORA</div>
+  <p>Your AI. Your world.</p>
+</header>
+<main>
+  <h2>Welcome to AIVORA</h2>
+  <p>Your personal AI assistant.</p>
+  <div id="chat">
+    <p><b>AIVORA:</b> Hello! How can I help you today?</p>
+  </div>
+  <input id="question" placeholder="Ask AIVORA something...">
+  <button onclick="sendMessage()">Send message</button>
+</main>
+<footer>AIVORA AI · First prototype</footer>
+<script>
+function sendMessage() {
+  const input = document.getElementById("question");
+  const chat = document.getElementById("chat");
+  const question = input.value.trim();
+  if (!question) return;
+
+  chat.innerHTML += "<p><b>You:</b> " +
+    question.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+    "</p>";
+
+  chat.innerHTML +=
+    "<p><b>AIVORA:</b> Thank you! Your first message has been received. AI connection is coming next.</p>";
+
+  input.value = "";
+  chat.scrollTop = chat.scrollHeight;
+}
+</script>
+</body>
+</html>
