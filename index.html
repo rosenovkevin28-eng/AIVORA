@@ -1,0 +1,260 @@
+
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080b14">
+<title>AIVORA AI</title>
+
+<link rel="manifest" href="./manifest.json">
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#080b14;color:#f5f7ff;
+ font-family:Inter,Arial,sans-serif;
+ height:100dvh;display:flex;overflow:hidden
+}
+.sidebar{
+ width:260px;background:#0d1220;
+ border-right:1px solid #202a40;
+ padding:20px;display:flex;flex-direction:column;gap:15px
+}
+.logo{font-size:25px;font-weight:800;letter-spacing:3px}
+.logo span{color:#8294ff}
+.new{
+ padding:13px;border:1px solid #34436a;
+ background:#18233b;color:white;border-radius:12px;
+ cursor:pointer
+}
+.side-label{color:#8190ad;font-size:12px;margin-top:15px}
+.history{overflow:auto;flex:1}
+.history-item{
+ padding:12px;border-radius:9px;color:#c4cce0;
+ font-size:13px;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;cursor:pointer
+}
+.history-item:hover{background:#1a2540}
+.profile{border-top:1px solid #263047;padding-top:15px;font-size:13px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+header{
+ height:65px;border-bottom:1px solid #202a40;
+ display:flex;align-items:center;justify-content:space-between;
+ padding:0 22px
+}
+.version{font-size:12px;color:#8294ff}
+.connection{font-size:12px;color:#62dba5}
+.chat{
+ flex:1;overflow-y:auto;padding:25px;
+ display:flex;flex-direction:column;gap:20px
+}
+.welcome{text-align:center;margin:auto;max-width:520px}
+.welcome h1{font-size:36px;margin:0 0 12px}
+.welcome p{color:#929db7;line-height:1.6}
+.message{
+ max-width:800px;width:fit-content;
+ padding:15px 18px;border-radius:16px;
+ line-height:1.65;white-space:pre-wrap;
+ overflow-wrap:anywhere
+}
+.user{align-self:flex-end;background:#344b91}
+.assistant{align-self:flex-start;background:#151f33}
+.composer-wrap{padding:15px 22px 22px}
+.composer{
+ max-width:850px;margin:auto;display:flex;gap:10px;
+ padding:9px;background:#111a2b;
+ border:1px solid #2b3853;border-radius:17px
+}
+textarea{
+ flex:1;resize:none;background:transparent;border:0;
+ outline:none;color:white;font:inherit;padding:10px;
+ min-height:42px;max-height:130px
+}
+button{
+ background:#7186ff;border:0;color:white;
+ border-radius:12px;padding:0 19px;
+ font-weight:bold;cursor:pointer
+}
+button:disabled{opacity:.5}
+.note{text-align:center;color:#68758e;font-size:11px;margin-top:10px}
+@media(max-width:700px){
+ .sidebar{display:none}
+ header{height:58px;padding:0 15px}
+ .chat{padding:16px}
+ .composer-wrap{padding:10px}
+ .welcome h1{font-size:29px}
+}
+</style>
+</head>
+
+<body>
+<aside class="sidebar">
+ <div class="logo">AIVORA<span>.</span></div>
+ <button class="new" id="newChat">＋ Нов разговор</button>
+ <div class="side-label">ПОСЛЕДНИ РАЗГОВОРИ</div>
+ <div class="history" id="historyList"></div>
+ <div class="profile">✦ AIVORA AI<br><span style="color:#8290aa">Personal AI Assistant</span></div>
+</aside>
+
+<section class="main">
+<header>
+ <strong>AIVORA AI</strong>
+ <span class="version">VERSION 2.0</span>
+ <span class="connection" id="status">● Проверка</span>
+</header>
+
+<main class="chat" id="chat">
+ <div class="welcome" id="welcome">
+  <h1>Здравей, добре дошъл.</h1>
+  <p>Аз съм AIVORA — твоят AI асистент. Какво ще създадем днес?</p>
+ </div>
+</main>
+
+<div class="composer-wrap">
+ <form class="composer" id="form">
+  <textarea id="input" placeholder="Попитай AIVORA..." rows="1" required></textarea>
+  <button id="send" type="submit">➤</button>
+ </form>
+ <div class="note">AIVORA AI • Възможни са грешки в отговорите</div>
+</div>
+</section>
+
+<script>
+"use strict";
+
+// ВЪВЕДИ АДРЕСА НА CLOUDFLARE WORKER
+const WORKER_URL = "YOUR_WORKER_URL";
+
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const form = document.getElementById("form");
+const send = document.getElementById("send");
+const status = document.getElementById("status");
+const historyList = document.getElementById("historyList");
+
+let conversations = [];
+let current = [];
+let busy = false;
+
+function renderHistory(){
+ historyList.replaceChildren();
+ conversations.forEach((conversation,index)=>{
+  const item=document.createElement("div");
+  item.className="history-item";
+  item.textContent=conversation.title;
+  item.onclick=()=>loadConversation(index);
+  historyList.appendChild(item);
+ });
+}
+
+function addMessage(text,role){
+ const element=document.createElement("div");
+ element.className="message "+role;
+ element.textContent=text;
+ chat.appendChild(element);
+ chat.scrollTop=chat.scrollHeight;
+ return element;
+}
+
+function newConversation(){
+ if(current.length){
+  conversations.unshift({
+   title:current[0].content.slice(0,35),
+   messages:[...current]
+  });
+  conversations=conversations.slice(0,30);
+  renderHistory();
+ }
+ current=[];
+ chat.replaceChildren();
+ const welcome=document.createElement("div");
+ welcome.className="welcome";
+ welcome.innerHTML="<h1>Здравей, добре дошъл.</h1><p>Аз съм AIVORA — твоят AI асистент. Какво ще създадем днес?</p>";
+ chat.appendChild(welcome);
+}
+
+function loadConversation(index){
+ if(current.length){
+  conversations.unshift({
+   title:current[0].content.slice(0,35),
+   messages:[...current]
+  });
+ }
+ current=[...conversations[index].messages];
+ chat.replaceChildren();
+ current.forEach(m=>addMessage(m.content,m.role));
+ renderHistory();
+}
+
+document.getElementById("newChat").onclick=newConversation;
+
+form.addEventListener("submit",async event=>{
+ event.preventDefault();
+ const message=input.value.trim();
+ if(!message||busy)return;
+
+ if(!/^https:\/\/[a-z0-9.-]+(?::\d+)?(?:\/.*)?$/i.test(WORKER_URL)){
+  addMessage("Необходимо е да конфигурираш Worker адреса.","assistant");
+  return;
+ }
+
+ busy=true;
+ send.disabled=true;
+ input.value="";
+
+ const welcome=document.getElementById("welcome");
+ if(welcome)welcome.remove();
+
+ addMessage(message,"user");
+ current.push({role:"user",content:message});
+ const loading=addMessage("AIVORA обработва заявката...","assistant");
+ status.textContent="● Обработка";
+
+ try{
+  const response=await fetch(WORKER_URL,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({
+    message,
+    history:current.slice(-20,-1)
+   })
+  });
+
+  if(!response.ok)throw new Error("HTTP "+response.status);
+
+  const data=await response.json();
+  if(typeof data.reply!=="string"||!data.reply.trim()){
+   throw new Error("Невалиден отговор");
+  }
+
+  loading.textContent=data.reply;
+  current.push({role:"assistant",content:data.reply});
+  status.textContent="● Свързан";
+
+ }catch(error){
+  loading.textContent="Връзката не бе успешна. Провери Worker и опитай отново.";
+  status.textContent="● Грешка";
+  console.error(error);
+ }finally{
+  busy=false;
+  send.disabled=false;
+  input.focus();
+ }
+});
+
+input.addEventListener("keydown",event=>{
+ if(event.key==="Enter"&&!event.shiftKey){
+  event.preventDefault();
+  form.requestSubmit();
+ }
+});
+
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>{
+  navigator.serviceWorker.register("./sw.js").catch(console.error);
+ });
+}
+</script>
+</body>
+</html>
